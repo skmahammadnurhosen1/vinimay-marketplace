@@ -18,6 +18,10 @@ const environmentSchema = z.object({
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   RATE_LIMIT_MAX: z.string().default('300').transform((val) => parseInt(val, 10)),
   RATE_LIMIT_WINDOW_MS: z.string().default('60000').transform((val) => parseInt(val, 10)),
+  ADMIN_EMAILS: z
+    .string()
+    .default('admin@autopartshub.com,skmahammadnurhosen1@gmail.com,admin@vinimay.com')
+    .transform((val) => val.split(',').map((o) => o.trim().toLowerCase())),
   NOTIFICATION_EMAIL_PROVIDER: z.enum(['mock', 'sendgrid', 'resend', 'ses']).default('mock'),
   NOTIFICATION_SMS_PROVIDER: z.enum(['mock', 'twilio', 'msg91']).default('mock'),
   NOTIFICATION_WHATSAPP_PROVIDER: z.enum(['mock', 'meta', 'gupshup']).default('mock'),

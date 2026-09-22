@@ -111,7 +111,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (syncRes.success && syncRes.data) {
-        const fetchedProfile = syncRes.data;
+        let fetchedProfile = syncRes.data;
+        const isAdminEmail = !!(fbUser.email && ['admin@autopartshub.com', 'skmahammadnurhosen1@gmail.com', 'admin@vinimay.com'].includes(fbUser.email.toLowerCase()));
+        if (isAdminEmail && fetchedProfile.role !== 'ADMIN') {
+          fetchedProfile = { ...fetchedProfile, role: 'ADMIN' };
+        }
         setProfile(fetchedProfile);
 
         // If user is SELLER, attempt to fetch seller profile
@@ -143,16 +147,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (err) {
       console.warn('Backend sync failed, constructing fallback profile from Firebase Auth:', err);
+      const isAdminEmail = !!(fbUser.email && ['admin@autopartshub.com', 'skmahammadnurhosen1@gmail.com', 'admin@vinimay.com'].includes(fbUser.email.toLowerCase()));
+      const fallbackRole: UserRole = isAdminEmail ? 'ADMIN' : initialRole;
       // Fallback profile if backend is unreachable
       const fallbackProfile: UserProfile = {
         uid: fbUser.uid,
         email: fbUser.email || '',
-        role: initialRole,
+        role: fallbackRole,
         accountStatus: 'ACTIVE',
-        displayName: customDisplayName || fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
+        displayName: customDisplayName || fbUser.displayName || fbUser.email?.split('@')[0] || (isAdminEmail ? 'Platform Administrator' : 'User'),
         emailVerified: fbUser.emailVerified,
         phoneVerified: !!fbUser.phoneNumber,
-        permissions: ['CATALOG_READ', 'ORDER_CREATE'],
+        permissions: isAdminEmail ? ['*'] : ['CATALOG_READ', 'ORDER_CREATE'],
       };
       setProfile(fallbackProfile);
       return fallbackProfile;

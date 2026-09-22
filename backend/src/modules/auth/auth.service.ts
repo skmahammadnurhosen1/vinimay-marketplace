@@ -70,6 +70,9 @@ export class AuthService {
   ): Promise<UserProfile> {
     let profile = await userRepository.findById(decoded.uid);
 
+    const isAdminEmail = !!(decoded.email && env.ADMIN_EMAILS.includes(decoded.email.toLowerCase()));
+    const effectiveRole: UserRole = isAdminEmail ? 'ADMIN' : (decoded.role || initialRole);
+
     if (!profile) {
       const now = new Date().toISOString();
       profile = {
@@ -77,7 +80,7 @@ export class AuthService {
         email: decoded.email || `${decoded.uid}@placeholder.autopartshub.com`,
         phoneNumber: decoded.phoneNumber || null,
         displayName: decoded.displayName || (decoded.email ? decoded.email.split('@')[0]! : 'Marketplace User'),
-        role: decoded.role || initialRole,
+        role: effectiveRole,
         accountStatus: (decoded.claims?.status as AccountStatus) || 'ACTIVE',
         emailVerified: !!decoded.emailVerified,
         phoneVerified: !!decoded.phoneNumber,
@@ -94,6 +97,11 @@ export class AuthService {
         role: profile.role,
       });
     } else {
+      // If user email is designated as ADMIN, ensure role is upgraded to ADMIN
+      if (isAdminEmail && profile.role !== 'ADMIN') {
+        profile = await userRepository.update(profile.uid, { role: 'ADMIN' });
+        logger.info('Upgraded user to ADMIN role based on configured admin email', { uid: profile.uid });
+      }
       // Keep login timestamp fresh
       await userRepository.updateLastLogin(profile.uid);
     }
