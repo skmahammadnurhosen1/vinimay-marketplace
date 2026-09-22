@@ -1,0 +1,90 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (request.auth.token.role == 'ADMIN' || request.auth.token.admin == true);
+    }
+
+    function isSellerOwner(sellerId) {
+      return isAuthenticated() &&
+        (request.auth.token.sellerId == sellerId || request.auth.uid == sellerId || isAdmin());
+    }
+
+    // 1. Sensitive Seller KYC Documents (Strictly Private)
+    // Never publicly accessible. Read permitted only to resource owner and platform admins.
+    match /sellers/{sellerId}/kyc/{fileName} {
+      allow read: if isSellerOwner(sellerId);
+      allow write: if isSellerOwner(sellerId) &&
+        request.resource.size < 10 * 1024 * 1024 && // 10MB max
+        request.resource.contentType.matches('application/pdf|image/(jpeg|png|webp)');
+    }
+
+    // 2. Seller Brand Authorization Documents (Strictly Private)
+    match /sellers/{sellerId}/auth/{fileName} {
+      allow read: if isSellerOwner(sellerId);
+      allow write: if isSellerOwner(sellerId) &&
+        request.resource.size < 10 * 1024 * 1024 &&
+        request.resource.contentType.matches('application/pdf|image/(jpeg|png|webp)');
+    }
+
+    // 3. Product Catalog Images (Publicly viewable, Authenticated Seller Upload)
+    match /products/{sellerId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSellerOwner(sellerId) &&
+        request.resource.size < 5 * 1024 * 1024 && // 5MB max
+        request.resource.contentType.matches('image/(jpeg|png|webp|avif)');
+    }
+
+    // 4. Customer Return Evidence Photos (Private)
+    match /returns/{customerId}/{allPaths=**} {
+      allow read: if isAuthenticated() && (request.auth.uid == customerId || request.auth.token.role == 'SELLER' || isAdmin());
+      allow write: if isAuthenticated() && request.auth.uid == customerId &&
+        request.resource.size < 15 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/(jpeg|png|webp|avif)|application/pdf');
+    }
+
+    // 5. Customer Warranty Claim Evidence Photos & Videos (Private)
+    match /warranty/{customerId}/{allPaths=**} {
+      allow read: if isAuthenticated() && (request.auth.uid == customerId || request.auth.token.role == 'SELLER' || isAdmin());
+      allow write: if isAuthenticated() && request.auth.uid == customerId &&
+        request.resource.size < 50 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/(jpeg|png|webp)|video/(mp4|quicktime)|application/pdf');
+    }
+
+    // 6. Customer Review Photos & Videos (Public read for approved, Authenticated upload)
+    match /reviews/{customerId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && request.auth.uid == customerId &&
+        request.resource.size < 25 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/(jpeg|png|webp)|video/(mp4|quicktime)');
+    }
+
+    // 7. Product Authenticity Verification Documents (Private)
+    match /verifications/{sellerId}/{allPaths=**} {
+      allow read: if isSellerOwner(sellerId);
+      allow write: if isSellerOwner(sellerId) &&
+        request.resource.size < 10 * 1024 * 1024 &&
+        request.resource.contentType.matches('application/pdf|image/(jpeg|png|webp)');
+    }
+
+    // 8. Support Ticket Attachment Files (Private)
+    match /support/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated() && request.auth.uid == userId &&
+        request.resource.size < 15 * 1024 * 1024 &&
+        request.resource.contentType.matches('application/pdf|image/(jpeg|png|webp)|video/mp4');
+    }
+
+    // Default: Deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
