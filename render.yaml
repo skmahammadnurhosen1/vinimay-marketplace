@@ -1,5 +1,5 @@
 # ==============================================================================
-# Render Blueprint Specification — AutoPartsHub Backend Web Service
+# Render Blueprint Specification — AutoPartsHub / Vinimay Backend Web Service
 # ==============================================================================
 services:
   - type: web
@@ -21,10 +21,6 @@ services:
         value: https://vinimay-p2p-marketplace.web.app
       - key: FIREBASE_PROJECT_ID
         value: vinimay-p2p-marketplace
-      - key: FIREBASE_CLIENT_EMAIL
-        sync: false
-      - key: FIREBASE_PRIVATE_KEY
-        sync: false
       - key: FIREBASE_STORAGE_BUCKET
         value: vinimay-p2p-marketplace.appspot.com
       - key: LOG_LEVEL
