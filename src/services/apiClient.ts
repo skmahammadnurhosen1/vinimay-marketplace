@@ -21,7 +21,7 @@ export const getApiBaseUrl = (): string => {
       hostname.includes('firebaseapp.com') ||
       hostname.includes('vinimay-p2p-marketplace')
     ) {
-      return 'https://autopartshub-backend.onrender.com/api/v1';
+      return 'https://vinimay-marketplace.onrender.com/api/v1';
     }
   }
 
